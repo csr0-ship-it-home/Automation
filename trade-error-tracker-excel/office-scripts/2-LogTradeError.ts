@@ -22,7 +22,8 @@ function main(
   errorDate: string,
   loggedAt: string,
   account?: string,
-  note?: string
+  note?: string,
+  custodian?: string
 ): Email {
   const table = workbook.getTable("TradeErrors");
   if (!table) throw new Error("TradeErrors table not found. Run the Setup script first.");
@@ -36,6 +37,7 @@ function main(
     "Error Date": isNaN(errorSerial) ? errorDate || "" : errorSerial,
     "Account / Ticker": (account || "").trim(),
     "Note": (note || "").trim(),
+    "Custodian": (custodian || "").trim(),
     "Status": "Open",
     "Reminders Sent": 0,
   };

@@ -28,6 +28,7 @@ interface OpenError {
   name: string;
   errorDate: number | string;
   account: string;
+  custodian: string;
   note: string;
   remindersSent: number;
   status: string;
@@ -67,14 +68,16 @@ function main(workbook: ExcelScript.Workbook, today: string, sendNow?: boolean):
   const trackerBody = tracker.getRangeBetweenHeaderAndTotal();
   const headers = tracker.getHeaderRowRange().getValues()[0].map(h => String(h).trim());
   const col = (name: string) => headers.indexOf(name);
+  const text = (r: (string | number | boolean)[], name: string) => (col(name) === -1 ? "" : String(r[col(name)]).trim());
   const open: OpenError[] = trackerBody.getValues()
     .map((r, i) => ({
       rowIndex: i,
       email: String(r[col("Email")]).trim().toLowerCase(),
-      name: String(r[col("Name")]).trim(),
+      name: text(r, "Name"),
       errorDate: r[col("Error Date")] as number | string,
-      account: String(r[col("Account / Ticker")]).trim(),
-      note: String(r[col("Note")]).trim(),
+      account: text(r, "Account / Ticker"),
+      custodian: text(r, "Custodian"),
+      note: text(r, "Note"),
       remindersSent: Number(r[col("Reminders Sent")]) || 0,
       status: String(r[col("Status")]).trim().toLowerCase(),
     }))
@@ -91,7 +94,8 @@ function main(workbook: ExcelScript.Workbook, today: string, sendNow?: boolean):
   Object.keys(byPerson).forEach(email => {
     const items = byPerson[email];
     const list = items.map(e =>
-      "<li>" + esc(dateText(e.errorDate)) + (e.account ? " - " + esc(e.account) : "") +
+      "<li>" + esc(dateText(e.errorDate)) + (e.custodian ? " - " + esc(e.custodian) : "") +
+      (e.account ? " - " + esc(e.account) : "") +
       (e.note ? " - " + esc(e.note) : "") + "</li>").join("");
     emails.push({
       to: email,
@@ -135,7 +139,7 @@ function summaryEmail(open: OpenError[], meetingText: string, todaySerial: numbe
     .map(e => {
       const d = toSerial(e.errorDate);
       return "<tr><td>" + esc(e.name) + "</td><td>" + esc(e.email) + "</td><td>" + esc(dateText(e.errorDate)) +
-        "</td><td>" + esc(e.account) + '</td><td style="text-align:right">' +
+        "</td><td>" + esc(e.custodian) + "</td><td>" + esc(e.account) + '</td><td style="text-align:right">' +
         (isNaN(d) ? "" : String(todaySerial - Math.floor(d))) + "</td></tr>";
     })
     .join("");
@@ -146,7 +150,7 @@ function summaryEmail(open: OpenError[], meetingText: string, todaySerial: numbe
       "<p>" + open.length + " trade error(s) still need a compliance form before " + esc(meetingText) +
       ". Each person below has been emailed a reminder.</p>" +
       '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse">' +
-      "<tr><th>Name</th><th>Email</th><th>Error date</th><th>Account / ticker</th><th>Days open</th></tr>" +
+      "<tr><th>Name</th><th>Email</th><th>Error date</th><th>Custodian</th><th>Account / ticker</th><th>Days open</th></tr>" +
       rows + "</table>",
   };
 }

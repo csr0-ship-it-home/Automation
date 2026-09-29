@@ -2,8 +2,8 @@
 
 This is the Microsoft 365 version of [`../trade-error-tracker`](../trade-error-tracker). It works like this:
 
-- **Microsoft Form (10 seconds):** the person logs the error right away with their name, the error date, and
-  optionally an account/ticker and a note.
+- **Microsoft Form (10 seconds):** the person logs the error right away with their name, the error date, the
+  custodian, and optionally an account/ticker and a note.
 - **Excel workbook on SharePoint/OneDrive:** each log becomes a row with Status **Open** until compliance marks it
   **Submitted**.
 - **Power Automate, every morning:** when a compliance meeting is 7 days away, everyone with an Open row gets a
@@ -74,6 +74,7 @@ const MEETING_WEEKDAY = "Tuesday"; // ... Tuesday of each month
    |---|---|---|
    | Your name | Text | Yes |
    | Date of the trade error | Date | Yes |
+   | Custodian | Choice: Schwab, Fidelity, Other | Yes |
    | Account / ticker | Text | No |
    | Quick note | Text | No |
 
@@ -94,7 +95,7 @@ Go to [make.powerautomate.com](https://make.powerautomate.com) → **Create → 
 |---|---|---|
 | 1 | **When a new response is submitted** (Microsoft Forms) | Form Id: `Trade Error Quick Log` |
 | 2 | **Get response details** (Microsoft Forms) | Form Id: `Trade Error Quick Log`<br>Response Id: *Response Id* (dynamic content) |
-| 3 | **Run script** (Excel Online (Business)) | Location / Document Library / File: your `Trade Error Tracker` workbook<br>Script: `Log Trade Error`<br>**email:** *Responders' Email*<br>**name:** *Your name*<br>**errorDate:** *Date of the trade error*<br>**loggedAt:** expression below<br>**account:** *Account / ticker*<br>**note:** *Quick note* |
+| 3 | **Run script** (Excel Online (Business)) | Location / Document Library / File: your `Trade Error Tracker` workbook<br>Script: `Log Trade Error`<br>**email:** *Responders' Email*<br>**name:** *Your name*<br>**errorDate:** *Date of the trade error*<br>**loggedAt:** expression below<br>**account:** *Account / ticker*<br>**note:** *Quick note*<br>**custodian:** *Custodian* |
 | 4 | **Send an email (V2)** (Office 365 Outlook) | To: *to* (from Run script)<br>Subject: *subject*<br>Body: *body* |
 
 Expression for **loggedAt**: click in the field, choose the **fx / Expression** tab, and paste:

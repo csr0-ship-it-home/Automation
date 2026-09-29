@@ -16,7 +16,7 @@ const MEETINGS_TO_PREFILL = 12;
 
 const TRACKER_HEADERS = [
   "Logged At", "Email", "Name", "Error Date", "Account / Ticker", "Note",
-  "Status", "Completed On", "Reminders Sent", "Last Reminder",
+  "Status", "Completed On", "Reminders Sent", "Last Reminder", "Custodian",
 ];
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const EXCEL_EPOCH = Date.UTC(1899, 11, 30);
@@ -51,7 +51,7 @@ function setupSettings(workbook: ExcelScript.Workbook) {
 function setupTracker(workbook: ExcelScript.Workbook) {
   if (workbook.getTable("TradeErrors")) return;
   const sheet = getOrAddSheet(workbook, "Trade Errors");
-  const header = sheet.getRange("A1:J1");
+  const header = sheet.getRange("A1:K1");
   header.setValues([TRACKER_HEADERS]);
   workbook.addTable(header, true).setName("TradeErrors");
 
@@ -59,7 +59,7 @@ function setupTracker(workbook: ExcelScript.Workbook) {
   sheet.getRange("G2:G10000").getDataValidation().setRule({
     list: { inCellDropDown: true, source: "Open,Submitted,Waived" },
   });
-  const highlight = sheet.getRange("A2:J10000").addConditionalFormat(ExcelScript.ConditionalFormatType.custom);
+  const highlight = sheet.getRange("A2:K10000").addConditionalFormat(ExcelScript.ConditionalFormatType.custom);
   highlight.getCustom().getRule().setFormula('=$G2="Open"');
   highlight.getCustom().getFormat().getFill().setColor("#FCE8E6");
 
@@ -67,7 +67,7 @@ function setupTracker(workbook: ExcelScript.Workbook) {
   sheet.getRange("D:D").setNumberFormat("yyyy-mm-dd");
   sheet.getRange("H:H").setNumberFormat("yyyy-mm-dd");
   sheet.getRange("J:J").setNumberFormat("yyyy-mm-dd");
-  sheet.getRange("A:J").getFormat().setColumnWidth(130);
+  sheet.getRange("A:K").getFormat().setColumnWidth(130);
   sheet.getRange("F:F").getFormat().setColumnWidth(260);
   sheet.getFreezePanes().freezeRows(1);
 }
