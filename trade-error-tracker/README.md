@@ -63,6 +63,4 @@ Nobody has to remember anything, and the tracker already shows who needs to be c
   can also limit the form to your domain under the form's *Settings → Responses*.
 - Columns are looked up by header name. You can reorder or add columns to the `Trade Errors` tab, but keep the
   existing header names.
-- **On Microsoft 365 instead of Google?** Use the same design: a Microsoft Form for the quick log feeding an Excel
-  table or SharePoint list with a `Status` column, plus a Power Automate scheduled flow that filters `Status = Open`
-  and emails people 7 days before each meeting date.
+- **On Microsoft 365 instead of Google?** See [`../trade-error-tracker-excel`](../trade-error-tracker-excel) for the Excel + Power Automate version.
