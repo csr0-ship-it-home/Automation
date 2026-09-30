@@ -203,6 +203,15 @@ class PipelineTests(unittest.TestCase):
         os.environ.pop("ANTHROPIC_API_KEY", None)
         self.assertIsNone(ai.write({}, [], [], [], {}))
 
+    def test_staleness(self):
+        from datetime import datetime, timezone
+        from engine.run import _is_stale
+        now = datetime(2026, 9, 30, tzinfo=timezone.utc)
+        self.assertTrue(_is_stale([("2026-04-24", -0.5)], "w", now))
+        self.assertFalse(_is_stale([("2026-09-25", -0.5)], "w", now))
+        self.assertFalse(_is_stale([("2026-08-01", 4.1)], "m", now))
+        self.assertTrue(_is_stale([], "d", now))
+
     def test_runs_without_macro_data(self):
         from datetime import datetime, timezone
         prices = demo.prices([a["symbol"] for a in ASSETS])
