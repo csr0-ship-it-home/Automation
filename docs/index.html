@@ -20,6 +20,11 @@
       <button id="themeBtn" class="btn icon" type="button" aria-label="Toggle dark mode">◐</button>
     </div>
   </div>
+  <nav class="wrap tabs" id="viewTabs" aria-label="Views">
+    <button data-view="dashboard" class="on">Dashboard</button>
+    <button data-view="news">Headlines</button>
+    <button data-view="top5">Top 5 picks</button>
+  </nav>
 </header>
 
 <main class="wrap">
@@ -29,6 +34,27 @@
   </div>
   <div id="errBanner" class="banner warn" hidden></div>
 
+  <div id="view-news" class="view" hidden>
+    <section class="card">
+      <div class="card-head"><h2 id="briefTitle">Market brief</h2><span class="hint" id="briefBy"></span></div>
+      <div id="brief" class="prose"></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>What the news is about</h2><span class="hint">Headlines from the last 3 days, grouped by theme and linked to the data</span></div>
+      <div id="themes" class="themes"></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>All headlines</h2><div class="seg" id="themeFilter"></div></div>
+      <div id="headlines" class="headlines"></div>
+    </section>
+  </div>
+
+  <div id="view-top5" class="view" hidden>
+    <p class="hint" style="margin:0 0 12px">The five highest composite scores right now, and why the data likes them. Refreshed with every update.</p>
+    <div id="top5"></div>
+  </div>
+
+  <div id="view-dashboard" class="view">
   <section class="summary" id="summary"></section>
 
   <section class="card">
@@ -77,6 +103,8 @@
     <div id="log" class="log"></div>
   </section>
 
+  </div>
+
   <section class="card method">
     <h2>How the score works</h2>
     <p>Every asset gets a 0–100 composite score from five parts, each scaled from −1 to +1. 50 is neutral.</p>
@@ -91,7 +119,7 @@
       Alerts fire when a rating changes, a timing setup appears (oversold uptrend, capitulation, golden or death cross, relative-value turn, breakout, overextension) or a macro threshold is crossed (VIX, credit spreads, yield curve, Sahm rule, Fed cuts, sentiment).
       A bullish setup that has historically <em>underperformed</em> for that asset is downgraded to Info.</p>
     <p class="disclaimer">Educational tool, not investment advice. Back-tests use a single ~10-year sample and past patterns may not repeat.
-      Data: Yahoo Finance / Stooq (prices, dividend-adjusted where available) and FRED (macro). Updated automatically after the US market close.</p>
+      Data: Yahoo Finance / Stooq (prices, dividend-adjusted where available) and FRED (macro). Headlines from public RSS feeds. Updated automatically at 11am Central and after the US market close.</p>
   </section>
 </main>
 

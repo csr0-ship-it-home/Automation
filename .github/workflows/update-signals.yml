@@ -2,9 +2,9 @@ name: Update market signals
 
 on:
   schedule:
-    - cron: "0 15 * * 1-5"    # 11:00am ET midday run while daylight saving time is in effect
-    - cron: "0 16 * * 1-5"    # 11:00am ET midday run during standard time
-    - cron: "15 22 * * 1-5"   # weekdays, after the US close (6:15pm ET summer / 5:15pm ET winter)
+    - cron: "0 16 * * 1-5"    # 11:00am Central midday run while daylight saving time is in effect (CDT)
+    - cron: "0 17 * * 1-5"    # 11:00am Central midday run during standard time (CST)
+    - cron: "15 22 * * 1-5"   # weekdays after the US close (5:15pm Central summer / 4:15pm Central winter)
   workflow_dispatch: {}
 
 permissions:
@@ -18,18 +18,20 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       # GitHub cron is UTC-only: two midday triggers exist, and only the one matching
-      # 11am in New York for the current season (EDT -0400 / EST -0500) proceeds.
-      - name: Check midday run matches 11am Eastern
+      # 11am in Chicago for the current season (CDT -0500 / CST -0600) proceeds.
+      - name: Check midday run matches 11am Central
         id: gate
         run: |
-          offset=$(TZ=America/New_York date +%z)
+          offset=$(TZ=America/Chicago date +%z)
           run=true
-          if [ "${{ github.event.schedule }}" = "0 15 * * 1-5" ] && [ "$offset" != "-0400" ]; then run=false; fi
           if [ "${{ github.event.schedule }}" = "0 16 * * 1-5" ] && [ "$offset" != "-0500" ]; then run=false; fi
+          if [ "${{ github.event.schedule }}" = "0 17 * * 1-5" ] && [ "$offset" != "-0600" ]; then run=false; fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
-          echo "Eastern offset $offset, schedule '${{ github.event.schedule }}', run=$run"
+          echo "Central offset $offset, schedule '${{ github.event.schedule }}', run=$run"
 
       - uses: actions/checkout@v4
         if: steps.gate.outputs.run == 'true'
@@ -38,6 +40,10 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         with:
           python-version: "3.12"
+
+      - name: Install Claude SDK (only when an API key is configured)
+        if: steps.gate.outputs.run == 'true' && env.ANTHROPIC_API_KEY != ''
+        run: pip install --quiet --upgrade anthropic
 
       - name: Unit tests
         if: steps.gate.outputs.run == 'true'
