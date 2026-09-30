@@ -64,7 +64,7 @@ return and the win rate after past occurrences, next to a normal 3-month period.
 2. **Turn on GitHub Pages:** Settings → Pages → Source "Deploy from a branch" → branch `main`, folder `/docs`.
    The site will be at `https://<your-username>.github.io/<repo>/`.
 3. **Run it once:** Actions → "Update market signals" → Run workflow. This replaces the demo data with live data. After that it runs
-   every weekday at 22:15 UTC.
+   every weekday at 11:00am Eastern (midday, using live intraday prices) and again after the close at 22:15 UTC.
 4. **Phone alerts (easiest):** install the free [ntfy](https://ntfy.sh) app, subscribe to a hard-to-guess topic name
    (for example `market-signals-8f3k2`), then add a repository secret `NTFY_TOPIC` with that name
    (Settings → Secrets and variables → Actions).

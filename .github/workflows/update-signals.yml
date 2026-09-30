@@ -2,6 +2,8 @@ name: Update market signals
 
 on:
   schedule:
+    - cron: "0 15 * * 1-5"    # 11:00am ET midday run while daylight saving time is in effect
+    - cron: "0 16 * * 1-5"    # 11:00am ET midday run during standard time
     - cron: "15 22 * * 1-5"   # weekdays, after the US close (6:15pm ET summer / 5:15pm ET winter)
   workflow_dispatch: {}
 
@@ -17,16 +19,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # GitHub cron is UTC-only: two midday triggers exist, and only the one matching
+      # 11am in New York for the current season (EDT -0400 / EST -0500) proceeds.
+      - name: Check midday run matches 11am Eastern
+        id: gate
+        run: |
+          offset=$(TZ=America/New_York date +%z)
+          run=true
+          if [ "${{ github.event.schedule }}" = "0 15 * * 1-5" ] && [ "$offset" != "-0400" ]; then run=false; fi
+          if [ "${{ github.event.schedule }}" = "0 16 * * 1-5" ] && [ "$offset" != "-0500" ]; then run=false; fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Eastern offset $offset, schedule '${{ github.event.schedule }}', run=$run"
+
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
 
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.run == 'true'
         with:
           python-version: "3.12"
 
       - name: Unit tests
+        if: steps.gate.outputs.run == 'true'
         run: python -m unittest discover -s tests
 
       - name: Fetch data, score, alert
+        if: steps.gate.outputs.run == 'true'
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
@@ -40,6 +58,7 @@ jobs:
         run: python -m engine.run
 
       - name: Commit updated data
+        if: steps.gate.outputs.run == 'true'
         run: |
           git config user.name "market-signals-bot"
           git config user.email "market-signals-bot@users.noreply.github.com"
