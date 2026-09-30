@@ -28,10 +28,14 @@ and 2 years of price and moving-average charts.
 **Relative-value pairs:** value vs growth (large and small), small vs large, mid vs large, equal vs cap weight, international vs US,
 EM vs US, and discretionary vs staples.
 
-**Economic data, straight from the agencies (no keys):** U.S. Treasury yield curves and real yields, the New York Fed's fed funds rate, BLS CPI, core CPI and unemployment (plus the Sahm rule computed from it), University of Michigan sentiment, Chicago Fed financial conditions, and VIX, oil and the dollar from market data. FRED fills in the rest when reachable: VIX, the 10y-2y and 10y-3m yield curves, high-yield credit spreads, the Fed funds rate, 2y and 10y yields,
-the 10y real yield, breakevens, CPI and core PCE, unemployment, the Sahm rule, jobless claims, recession probability,
-consumer sentiment, the Chicago Fed financial conditions index, the dollar, oil, M2, industrial production, housing permits,
-and the Buffett indicator (market cap / GDP).
+**Economic data, straight from the agencies (no keys):**
+- U.S. Treasury: 2y and 10y yields, the 10y-2y and 10y-3m yield curves, the 10y real yield and the inflation breakeven.
+- New York Fed: the fed funds rate.
+- BLS: CPI, core CPI and unemployment, plus the Sahm recession rule computed from unemployment.
+- University of Michigan consumer sentiment and the Chicago Fed financial conditions index.
+- Market data: VIX, oil and the dollar index, plus a credit-stress gauge from high-yield bonds vs Treasuries.
+- FRED fills in the rest when it's reachable: the high-yield spread, core PCE, jobless claims, recession probability,
+  M2, industrial production, housing permits and the Buffett indicator (market cap / GDP).
 
 ## Tabs
 
