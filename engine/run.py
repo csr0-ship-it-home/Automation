@@ -6,7 +6,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import data_sources, demo, notify
+from . import ai, data_sources, demo, news, notify, writeups
 from .indicators import pct_change, percentile_rank
 from .macro import build_macro
 from .scoring import analyze_asset, finalize_scores
@@ -96,6 +96,32 @@ def build(prices, macro_raw, prev, now, is_demo=False, errors=None):
     return latest
 
 
+def add_commentary(latest, now, is_demo=False):
+    """Headlines tab + top-5 writeups (data-driven, plus Claude-written when ANTHROPIC_API_KEY is set)."""
+    top_syms = [a["symbol"] for a in latest["assets"][:5]]
+    if is_demo:
+        headlines, symbol_news = news.demo_headlines(now), {}
+    else:
+        headlines, symbol_news = news.fetch_headlines(now, top_syms)
+    themes = news.theme_summary(headlines)
+    top5 = writeups.top5(latest, headlines, symbol_news)
+    brief = writeups.news_brief(latest, headlines, themes)
+    written = None if is_demo else ai.write(latest, headlines, themes, top5, symbol_news)
+    if written:
+        brief["ai"] = {**written["market_brief"], "model": written.get("model")}
+        takeaways = {t["theme"]: t["takeaway"] for t in written.get("themes", [])}
+        for t in brief["themes"]:
+            if t["theme"] in takeaways:
+                t["ai"] = takeaways[t["theme"]]
+        by_sym = {t["symbol"]: t for t in written.get("top5", [])}
+        for t in top5:
+            if t["symbol"] in by_sym:
+                t["ai"] = {k: by_sym[t["symbol"]][k] for k in ("thesis", "risks", "watch")}
+    latest["news"] = {"headlines": headlines, "themes": themes, "brief": brief,
+                      "ai_enabled": bool(written)}
+    latest["top5"] = top5
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--demo", action="store_true", help="use synthetic data (no network)")
@@ -125,6 +151,10 @@ def main(argv=None):
             return 1
 
     latest = build(prices, macro_raw, prev, now, is_demo=args.demo, errors=errors)
+    try:
+        add_commentary(latest, now, is_demo=args.demo)
+    except Exception as exc:  # commentary is best-effort; never block the data update
+        print(f"WARN commentary: {exc}", file=sys.stderr)
     with open(latest_path, "w") as f:
         json.dump(latest, f, separators=(",", ":"))
 

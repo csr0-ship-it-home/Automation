@@ -85,6 +85,7 @@
     eb.hidden = !errs.length;
     if (errs.length) eb.innerHTML = `<strong>Some data could not be fetched on the last run:</strong> ${esc(errs.join(", "))}. The affected items are skipped.`;
     renderSummary(); renderAlerts(); renderStyleBox(); renderPairs(); renderTabs(); renderTable(); renderMacro(); renderLog();
+    renderNews(); renderTop5();
   }
 
   // ---------- summary ----------
@@ -294,6 +295,91 @@
       showTip(`<b>${esc(dates[i])}</b>${series.map((s) => `<div class="row"><i class="sw" style="background:${s.color}"></i>${esc(s.name)}: ${s.values[i] == null ? "—" : fmt(s.values[i])}</div>`).join("")}`, e.clientX, e.clientY);
     });
     svg.addEventListener("mouseleave", () => { xh.setAttribute("visibility", "hidden"); svg.querySelectorAll("circle").forEach((c) => c.setAttribute("visibility", "hidden")); hideTip(); });
+  }
+
+  // ---------- views (Dashboard / Headlines / Top 5) ----------
+  let view = store.get("mts.view", "dashboard"), themeFilter = "all";
+  function setView(v) {
+    if (!["dashboard", "news", "top5"].includes(v)) v = "dashboard";
+    view = v; store.set("mts.view", v);
+    document.querySelectorAll("#viewTabs button").forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+    document.querySelectorAll(".view").forEach((el) => { el.hidden = el.id !== `view-${v}`; });
+  }
+  $("#viewTabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { setView(b.dataset.view); scrollTo(0, 0); } });
+  setView(view);
+
+  const safeUrl = (u) => /^https?:\/\//i.test(u || "") ? u : "#";
+  function ago(iso) {
+    if (!iso) return "";
+    const h = (Date.now() - new Date(iso).getTime()) / 36e5;
+    if (h < 1) return `${Math.max(1, Math.round(h * 60))}m ago`;
+    if (h < 48) return `${Math.round(h)}h ago`;
+    return `${Math.round(h / 24)}d ago`;
+  }
+  const hlItem = (h) => `<div class="hl">
+      <a href="${esc(safeUrl(h.link))}" target="_blank" rel="noopener noreferrer">${esc(h.title)}</a>
+      <span class="meta">${esc(h.source || "")}${h.published ? ` · ${ago(h.published)}` : ""}</span>
+      ${(h.themes || []).length ? `<span class="tags">${h.themes.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</span>` : ""}
+    </div>`;
+  const fundChip = (sym) => { const a = bySym[sym]; return a ? `<span class="chip fund ${a.score >= 60 ? "positive" : a.score < 45 ? "warning" : "neutral"}" data-sym="${esc(sym)}">${esc(sym)} ${a.score}</span>` : ""; };
+  const paras = (list) => (list || []).map((p) => `<p>${esc(p)}</p>`).join("");
+
+  function renderNews() {
+    const n = DATA.news;
+    if (!n) { $("#brief").innerHTML = `<div class="empty">Headlines appear after the next data update.</div>`; $("#themes").innerHTML = ""; $("#headlines").innerHTML = ""; return; }
+    const b = n.brief, ai = b.ai;
+    $("#briefTitle").textContent = ai ? ai.headline : "Market brief";
+    $("#briefBy").textContent = ai ? "Written by Claude from today's headlines and data" : "Generated from today's data";
+    $("#brief").innerHTML = ai ? paras(ai.paragraphs) : `<p class="lead">${esc(b.headline)}</p>${paras(b.paragraphs)}`;
+    $("#themes").innerHTML = b.themes.length ? b.themes.map((t) => {
+      const items = n.headlines.filter((h) => h.themes.includes(t.theme)).slice(0, 4);
+      return `<div class="theme">
+        <h3><span>${esc(t.theme)}</span><span class="hint">${t.count} headline${t.count > 1 ? "s" : ""}</span></h3>
+        ${t.ai ? `<div>${esc(t.ai)}</div>` : ""}
+        ${t.note ? `<div class="note">${esc(t.note)}</div>` : ""}
+        <div class="funds">${t.symbols.map(fundChip).join("")}</div>
+        <ul>${items.map((h) => `<li><a href="${esc(safeUrl(h.link))}" target="_blank" rel="noopener noreferrer">${esc(h.title)}</a> <span class="hint">${esc(h.source || "")}</span></li>`).join("")}</ul>
+      </div>`;
+    }).join("") : `<div class="empty">No clear themes in the latest headlines.</div>`;
+    const themes = ["all", ...n.themes.map((t) => t.theme)];
+    if (!themes.includes(themeFilter)) themeFilter = "all";
+    $("#themeFilter").innerHTML = themes.slice(0, 8).map((t) => `<button data-t="${esc(t)}" class="${t === themeFilter ? "on" : ""}">${t === "all" ? "All" : esc(t)}</button>`).join("");
+    $("#themeFilter").onclick = (e) => { const x = e.target.closest("button"); if (x) { themeFilter = x.dataset.t; renderNews(); } };
+    const list = n.headlines.filter((h) => themeFilter === "all" || h.themes.includes(themeFilter));
+    $("#headlines").innerHTML = list.length ? list.map(hlItem).join("") : `<div class="empty">No headlines were fetched on the last update.</div>`;
+    $("#view-news").querySelectorAll("[data-sym]").forEach((el) => el.addEventListener("click", () => openDetail(el.dataset.sym)));
+  }
+
+  function renderTop5() {
+    const list = DATA.top5 || [];
+    $("#top5").innerHTML = list.length ? list.map((t) => {
+      const a = bySym[t.symbol]; if (!a) return "";
+      const comps = COMP.map(([k, label]) => `<div class="comp"><span>${label}</span>${dbar(a.components[k])}<span style="text-align:right">${a.components[k] > 0 ? "+" : ""}${a.components[k].toFixed(2)}</span></div>`).join("");
+      const m = a.metrics;
+      const sigs = t.signals.length ? t.signals.map((s) => `<li>${esc(s.title.split(": ").slice(1).join(": ") || s.title)}${s.backtest && s.backtest.h63 ? ` <span class="hint">(past cases: ${pct(s.backtest.h63.avg)} avg 3-month return, ${Math.round(s.backtest.h63.win * 100)}% positive, n=${s.backtest.episodes})</span>` : ""}</li>`).join("") : "";
+      return `<section class="card t5">
+        <div class="side">
+          <div class="rank">#${t.rank} highest score</div>
+          <div><span class="sym">${esc(t.symbol)}</span> <span class="hint">${esc(t.name)}</span></div>
+          <div><span class="chip positive">${esc(t.rating)} · ${t.score}/100</span></div>
+          <div class="small hint">$${num(m.price)} · 3M ${pct(m.r3m)} · 12M ${pct(m.r12m)} · RSI ${m.rsi14}</div>
+          ${comps}
+          <button class="btn" data-sym="${esc(t.symbol)}">Full breakdown and chart</button>
+        </div>
+        <div>
+          <h3>Why it's well positioned</h3>
+          ${t.ai ? `<div class="ai"><p>${esc(t.ai.thesis)}</p><div class="ai-badge">Written by Claude from the data and headlines</div></div>` : `<p>${esc(t.summary)}</p>`}
+          <ul>${t.strengths.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+          ${sigs ? `<h3>Active signals</h3><ul>${sigs}</ul>` : ""}
+          <h3>Risks</h3>
+          ${t.ai ? `<p>${esc(t.ai.risks)}</p>` : ""}<ul>${t.risks.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+          <h3>What to watch</h3>
+          ${t.ai ? `<p>${esc(t.ai.watch)}</p>` : ""}<ul>${t.watch.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+          ${t.headlines.length ? `<h3>Related headlines</h3><div class="headlines">${t.headlines.map(hlItem).join("")}</div>` : ""}
+        </div>
+      </section>`;
+    }).join("") : `<div class="card empty">Top-5 writeups appear after the next data update.</div>`;
+    $("#top5").querySelectorAll("[data-sym]").forEach((el) => el.addEventListener("click", () => openDetail(el.dataset.sym)));
   }
 
   // ---------- detail drawer ----------

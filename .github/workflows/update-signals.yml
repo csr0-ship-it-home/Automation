@@ -2,7 +2,9 @@ name: Update market signals
 
 on:
   schedule:
-    - cron: "15 22 * * 1-5"   # weekdays, after the US close (6:15pm ET summer / 5:15pm ET winter)
+    - cron: "0 16 * * 1-5"    # 11:00am Central midday run while daylight saving time is in effect (CDT)
+    - cron: "0 17 * * 1-5"    # 11:00am Central midday run during standard time (CST)
+    - cron: "15 22 * * 1-5"   # weekdays after the US close (5:15pm Central summer / 4:15pm Central winter)
   workflow_dispatch: {}
 
 permissions:
@@ -16,17 +18,39 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
+      # GitHub cron is UTC-only: two midday triggers exist, and only the one matching
+      # 11am in Chicago for the current season (CDT -0500 / CST -0600) proceeds.
+      - name: Check midday run matches 11am Central
+        id: gate
+        run: |
+          offset=$(TZ=America/Chicago date +%z)
+          run=true
+          if [ "${{ github.event.schedule }}" = "0 16 * * 1-5" ] && [ "$offset" != "-0500" ]; then run=false; fi
+          if [ "${{ github.event.schedule }}" = "0 17 * * 1-5" ] && [ "$offset" != "-0600" ]; then run=false; fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Central offset $offset, schedule '${{ github.event.schedule }}', run=$run"
+
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
 
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.run == 'true'
         with:
           python-version: "3.12"
 
+      - name: Install Claude SDK (only when an API key is configured)
+        if: steps.gate.outputs.run == 'true' && env.ANTHROPIC_API_KEY != ''
+        run: pip install --quiet --upgrade anthropic
+
       - name: Unit tests
+        if: steps.gate.outputs.run == 'true'
         run: python -m unittest discover -s tests
 
       - name: Fetch data, score, alert
+        if: steps.gate.outputs.run == 'true'
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
@@ -40,6 +64,7 @@ jobs:
         run: python -m engine.run
 
       - name: Commit updated data
+        if: steps.gate.outputs.run == 'true'
         run: |
           git config user.name "market-signals-bot"
           git config user.email "market-signals-bot@users.noreply.github.com"

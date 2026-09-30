@@ -72,6 +72,40 @@ class PipelineTests(unittest.TestCase):
         again = build(prices, demo.macro(MACRO_SERIES), out, datetime.now(timezone.utc), is_demo=True)
         self.assertFalse(any(a["new"] for a in again["alerts"]))
 
+    def test_commentary_demo(self):
+        from datetime import datetime, timezone
+        from engine.run import add_commentary
+        now = datetime.now(timezone.utc)
+        prices = demo.prices([a["symbol"] for a in ASSETS])
+        out = build(prices, demo.macro(MACRO_SERIES), {}, now, is_demo=True)
+        add_commentary(out, now, is_demo=True)
+        self.assertEqual([t["symbol"] for t in out["top5"]], [a["symbol"] for a in out["assets"][:5]])
+        for t in out["top5"]:
+            self.assertTrue(t["strengths"] and t["risks"] and t["watch"])
+        self.assertTrue(out["news"]["themes"])
+        self.assertTrue(out["news"]["brief"]["paragraphs"])
+
+    def test_news_parsing_and_dedupe(self):
+        from datetime import datetime, timezone
+        from engine.news import parse_rss, tag_and_rank
+        xml = ("<rss><channel>"
+               "<item><title>Fed signals rate cut - Reuters</title><link>https://a.com/1</link><pubDate>Tue, 29 Sep 2026 14:00:00 GMT</pubDate></item>"
+               "<item><title>Fed signals rate cut</title><link>https://b.com/2</link><pubDate>Tue, 29 Sep 2026 15:00:00 GMT</pubDate></item>"
+               "<item><title>Old news about oil</title><link>https://c.com/3</link><pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate></item>"
+               "<item><title>Bad link</title><link>javascript:alert(1)</link></item>"
+               "</channel></rss>")
+        items = parse_rss(xml, "Google News")
+        self.assertEqual(len(items), 3)
+        ranked = tag_and_rank(items, datetime(2026, 9, 30, tzinfo=timezone.utc))
+        self.assertEqual(len(ranked), 1)
+        self.assertIn("Fed & interest rates", ranked[0]["themes"])
+
+    def test_ai_skipped_without_key(self):
+        import os
+        from engine import ai
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        self.assertIsNone(ai.write({}, [], [], [], {}))
+
     def test_macro_alerts(self):
         raw = demo.macro(MACRO_SERIES)
         d = raw["SAHMREALTIME"][-1][0]
