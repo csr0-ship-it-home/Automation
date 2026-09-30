@@ -6,7 +6,7 @@ bond / real-asset class**. It pushes an alert to your phone or inbox when someth
 
 It runs for free on GitHub: a scheduled GitHub Action pulls the data every weekday after the US close,
 scores everything, writes JSON into `docs/data/`, and GitHub Pages serves the dashboard from `docs/`.
-No servers, API keys or paid data.
+No servers, no API keys and no paid data.
 
 > Educational tool, not investment advice. The back-tests use a single ~10-year sample, and past
 > patterns may not repeat.
@@ -28,10 +28,14 @@ and 2 years of price and moving-average charts.
 **Relative-value pairs:** value vs growth (large and small), small vs large, mid vs large, equal vs cap weight, international vs US,
 EM vs US, and discretionary vs staples.
 
-**24 macro series from FRED:** VIX, the 10y-2y and 10y-3m yield curves, high-yield credit spreads, the Fed funds rate, 2y and 10y yields,
-the 10y real yield, breakevens, CPI and core PCE, unemployment, the Sahm rule, jobless claims, recession probability,
-consumer sentiment, the Chicago Fed financial conditions index, the dollar, oil, M2, industrial production, housing permits,
-and the Buffett indicator (market cap / GDP).
+**Economic data, straight from the agencies (no keys):**
+- U.S. Treasury: 2y and 10y yields, the 10y-2y and 10y-3m yield curves, the 10y real yield and the inflation breakeven.
+- New York Fed: the fed funds rate.
+- BLS: CPI, core CPI and unemployment, plus the Sahm recession rule computed from unemployment.
+- University of Michigan consumer sentiment and the Chicago Fed financial conditions index.
+- Market data: VIX, oil and the dollar index, plus a credit-stress gauge from high-yield bonds vs Treasuries.
+- FRED fills in the rest when it's reachable: the high-yield spread, core PCE, jobless claims, recession probability,
+  M2, industrial production, housing permits and the Buffett indicator (market cap / GDP).
 
 ## Tabs
 
@@ -87,6 +91,8 @@ Optional channels, all set as repository secrets:
 
 | Secret | Purpose |
 |---|---|
+| `FRED_API_KEY` | Optional: more reliable access to the FRED-only series (claims, M2, Buffett indicator…) |
+| `TIINGO_API_KEY` | Backup price source if Yahoo Finance rate-limits the run (free key at tiingo.com) |
 | `ANTHROPIC_API_KEY` | Claude-written market brief and top-5 writeups (from console.anthropic.com) |
 | `WEBHOOK_URL` | Slack or Discord incoming webhook |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `ALERT_EMAIL_TO` | Email, for example Gmail with an app password (`smtp.gmail.com`, `587`) |
@@ -110,7 +116,7 @@ python -m http.server -d docs 8000      # open http://localhost:8000
 
 ```
 engine/universe.py      what is tracked + macro sensitivities (edit to add tickers)
-engine/data_sources.py  Yahoo Finance (Stooq fallback) prices, FRED macro, all keyless
+engine/data_sources.py  prices (yfinance, Tiingo/Yahoo/Stooq fallbacks) and FRED macro data
 engine/indicators.py    SMA, RSI, drawdown, percentiles, forward-return back-tests
 engine/macro.py         macro gauges, factor scores, risk regime, macro alerts
 engine/scoring.py       per-asset metrics, timing signals, composite score

@@ -6,7 +6,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import ai, data_sources, demo, news, notify, writeups
+from . import ai, data_sources, demo, macro_sources, news, notify, writeups
 from .indicators import pct_change, percentile_rank
 from .macro import build_macro
 from .scoring import analyze_asset, finalize_scores
@@ -34,6 +34,17 @@ def _fetch_all(fn, keys, workers=6):
             except Exception as exc:
                 errors[k] = str(exc)[:300]
     return out, errors
+
+
+# How old the latest observation may be before a series counts as stale (publication lags included)
+MAX_AGE_DAYS = {"d": 10, "w": 21, "m": 75, "q": 200}
+
+
+def _is_stale(series, freq, now):
+    if not series:
+        return True
+    from datetime import date
+    return (now.date() - date.fromisoformat(series[-1][0])).days > MAX_AGE_DAYS.get(freq, 75)
 
 
 def build(prices, macro_raw, prev, now, is_demo=False, errors=None):
@@ -141,14 +152,34 @@ def main(argv=None):
     if args.demo:
         prices, macro_raw, errors = demo.prices(symbols), demo.macro(MACRO_SERIES), {}
     else:
-        prices, perr = _fetch_all(data_sources.fetch_prices, symbols)
-        macro_raw, merr = _fetch_all(data_sources.fetch_fred, [m["id"] for m in MACRO_SERIES])
+        tickers = macro_sources.MARKET_TICKERS
+        prices, perr = data_sources.fetch_all_prices(symbols + list(tickers.values()))
+        macro_raw = {fid: prices.pop(t) for fid, t in tickers.items() if t in prices}
+        perr = {k: v for k, v in perr.items() if k not in tickers.values()}
+        public, merr = macro_sources.fetch_public_macro()
+        macro_raw.update(public)
+        macro_raw["CREDIT_PROXY"] = macro_sources.credit_proxy(prices)
+        stale = [m["id"] for m in MACRO_SERIES if m["id"] in macro_raw and _is_stale(macro_raw[m["id"]], m["freq"], now)]
+        if stale:
+            print(f"stale public series, also trying FRED: {', '.join(stale)}")
+        fred_ids = [m["id"] for m in MACRO_SERIES if (m["id"] not in macro_raw or m["id"] in stale)
+                    and m["id"] not in ("CORECPI", "CREDIT_PROXY")]
+        fred, ferr = _fetch_all(data_sources.fetch_fred, fred_ids, workers=4)
+        for sid, series in fred.items():  # keep whichever source is more current
+            if series and (sid not in macro_raw or series[-1][0] > macro_raw[sid][-1][0]):
+                macro_raw[sid] = series
+        if ferr:
+            print(f"FRED unavailable for {len(ferr)} optional series (shown only when FRED is reachable): {', '.join(ferr)}")
         errors = {**perr, **merr}
         for k, v in errors.items():
             print(f"WARN fetch {k}: {v}", file=sys.stderr)
+        print(f"prices: {len(prices)}/{len(symbols)} symbols, macro: {len(macro_raw)}/{len(MACRO_SERIES)} series")
         if BENCHMARK not in prices or len(prices) < len(symbols) // 2:
             print("ERROR: too many price fetches failed; keeping previous data", file=sys.stderr)
             return 1
+        if not macro_raw:
+            print("WARN: no macro data fetched (set a FRED_API_KEY secret); scoring without the macro component",
+                  file=sys.stderr)
 
     latest = build(prices, macro_raw, prev, now, is_demo=args.demo, errors=errors)
     try:

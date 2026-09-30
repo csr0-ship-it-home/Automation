@@ -139,6 +139,23 @@ def build_macro(raw, specs):
         else:
             state, read = "positive", "Healthy credit conditions."
         gauge("BAMLH0A0HYM2", "High-yield credit spread", "%", state, read)
+    proxy = last("CREDIT_PROXY")
+    if hy is None and proxy is not None:
+        low = min((v for d, v in s["CREDIT_PROXY"] if d >= _ago(s["CREDIT_PROXY"][-1][0], 120)), default=proxy)
+        if low <= -5 and proxy > low + 2:
+            state, read = "opportunity", "High-yield bonds are recovering after a sharp slide vs Treasuries: credit stress easing, historically a good entry for risk assets."
+            alert("credit_peak", "opportunity", "Credit stress easing",
+                  f"High-yield bonds have recovered from {low:.1f}% to {proxy:.1f}% vs Treasuries: past stress peaks have marked strong entry points.")
+        elif proxy <= -5:
+            state, read = "warning", "High-yield bonds are sliding vs Treasuries: markets are pricing more default risk."
+            alert("credit_widening", "warning", "Credit stress rising",
+                  f"High-yield bonds are {abs(proxy):.1f}% below their 1-year high relative to Treasuries; credit stress has preceded most equity drawdowns.")
+        elif proxy <= -2.5:
+            state, read = "warning", "Some credit stress: junk bonds lagging Treasuries."
+        else:
+            state, read = "positive", "Healthy credit conditions: junk bonds holding up vs Treasuries."
+        gauge("CREDIT_PROXY", "Credit stress (HYG vs Treasuries)", "%", state,
+              read + " Shown as the high-yield/Treasury price ratio's drop from its 1-year high.")
 
     # --- Recession indicators
     sahm = last("SAHMREALTIME")
@@ -200,6 +217,9 @@ def build_macro(raw, specs):
     if last("PCEPILFE") is not None:
         gauge("PCEPILFE", "Core PCE inflation (YoY)", "%", "warning" if last("PCEPILFE") > 3 else "neutral",
               "The Fed's preferred inflation gauge (target 2%).")
+    elif last("CORECPI") is not None:
+        gauge("CORECPI", "Core CPI inflation (YoY)", "%", "warning" if last("CORECPI") > 3.2 else "neutral",
+              "Inflation excluding food and energy; the Fed targets about 2% (core CPI usually runs a bit above that).")
     if last("T10YIE") is not None:
         gauge("T10YIE", "10y inflation breakeven", "%", "neutral", "Market-implied inflation expectation.")
 
@@ -264,7 +284,8 @@ def build_macro(raw, specs):
     factors = {
         "curve_steepening": clip(f_or0(_change(s.get("T10Y2Y"), 91)) / 0.5),
         "rates_falling": clip(-f_or0(_change(s.get("DGS2"), 182)) / 1.0),
-        "credit_stress": 0.0 if hy_p is None else clip((hy_p - 0.5) * 2),
+        "credit_stress": (clip((hy_p - 0.5) * 2) if hy_p is not None
+                          else clip(-proxy / 3 - 1) if proxy is not None else 0.0),
         "recession_risk": clip(rec * 2 - 1),
         "inflation_pressure": 0.0 if cpi is None else clip((cpi - 2.5) / 2),
         "dollar_strength": clip(f_or0(_pct_change(s.get("DTWEXBGS"), 182)) / 0.05),

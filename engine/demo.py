@@ -43,7 +43,7 @@ def macro(specs, end=None, seed=11):
     rng = random.Random(seed)
     base = {"VIXCLS": (18, 5), "T10Y2Y": (0.4, 0.6), "T10Y3M": (0.5, 0.8), "BAMLH0A0HYM2": (4, 1.2), "DFF": (3, 1.5),
             "DGS2": (3, 1.2), "DGS10": (3.5, 1), "DFII10": (1, 0.8), "T10YIE": (2.3, 0.3), "CPIAUCSL": (250, 30),
-            "PCEPILFE": (115, 10), "UNRATE": (4.5, 1), "SAHMREALTIME": (0.2, 0.2), "ICSA": (230000, 30000),
+            "PCEPILFE": (115, 10), "CORECPI": (300, 20), "CREDIT_PROXY": (-1.5, 1.2), "UNRATE": (4.5, 1), "SAHMREALTIME": (0.2, 0.2), "ICSA": (230000, 30000),
             "RECPROUSM156N": (5, 8), "UMCSENT": (75, 10), "NFCI": (-0.4, 0.2), "DTWEXBGS": (120, 6),
             "DCOILWTICO": (70, 12), "M2SL": (20000, 2000), "INDPRO": (102, 3), "PERMIT": (1400, 150),
             "NCBEILQ027S": (55_000_000, 10_000_000), "GDP": (25_000, 3_000)}
@@ -58,7 +58,7 @@ def macro(specs, end=None, seed=11):
             d -= timedelta(days=step[spec["freq"]])
         days = days[::-1]
         x, series = 0.0, []
-        growth = spec["id"] in ("CPIAUCSL", "PCEPILFE", "M2SL", "GDP", "NCBEILQ027S", "INDPRO")
+        growth = spec["id"] in ("CPIAUCSL", "PCEPILFE", "CORECPI", "M2SL", "GDP", "NCBEILQ027S", "INDPRO")
         for i, dd in enumerate(days):
             x = 0.97 * x + rng.gauss(0, 0.25)
             v = mu + sd * x

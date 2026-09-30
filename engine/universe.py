@@ -88,7 +88,8 @@ PAIRS = [
     ("XLY", "XLP", "Discretionary vs Staples (risk appetite)"),
 ]
 
-# FRED series pulled via the keyless fredgraph CSV endpoint.
+# Economic series, keyed by FRED id. Most come from keyless agency sources (engine/macro_sources.py);
+# CORECPI and CREDIT_PROXY are computed locally. FRED fills the rest when reachable.
 # transform: "level" (latest value) or "yoy" (% change vs. 12 months earlier)
 MACRO_SERIES = [
     {"id": "VIXCLS", "name": "VIX (equity volatility)", "unit": "", "transform": "level", "freq": "d"},
@@ -102,6 +103,8 @@ MACRO_SERIES = [
     {"id": "T10YIE", "name": "10y inflation breakeven", "unit": "%", "transform": "level", "freq": "d"},
     {"id": "CPIAUCSL", "name": "CPI inflation (YoY)", "unit": "%", "transform": "yoy", "freq": "m"},
     {"id": "PCEPILFE", "name": "Core PCE inflation (YoY)", "unit": "%", "transform": "yoy", "freq": "m"},
+    {"id": "CORECPI", "name": "Core CPI inflation (YoY)", "unit": "%", "transform": "yoy", "freq": "m"},
+    {"id": "CREDIT_PROXY", "name": "Credit stress (HYG vs Treasuries)", "unit": "%", "transform": "level", "freq": "d"},
     {"id": "UNRATE", "name": "Unemployment rate", "unit": "%", "transform": "level", "freq": "m"},
     {"id": "SAHMREALTIME", "name": "Sahm rule recession indicator", "unit": "pp", "transform": "level", "freq": "m"},
     {"id": "ICSA", "name": "Initial jobless claims", "unit": "k", "transform": "level", "freq": "w", "scale": 0.001},

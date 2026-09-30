@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 20
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
     steps:
       # GitHub cron is UTC-only: two midday triggers exist, and only the one matching
       # 11am in Chicago for the current season (CDT -0500 / CST -0600) proceeds.
@@ -33,13 +35,17 @@ jobs:
           echo "run=$run" >> "$GITHUB_OUTPUT"
           echo "Central offset $offset, schedule '${{ github.event.schedule }}', run=$run"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.gate.outputs.run == 'true'
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.gate.outputs.run == 'true'
         with:
           python-version: "3.12"
+
+      - name: Install market data library
+        if: steps.gate.outputs.run == 'true'
+        run: pip install --quiet yfinance
 
       - name: Install Claude SDK (only when an API key is configured)
         if: steps.gate.outputs.run == 'true' && env.ANTHROPIC_API_KEY != ''
