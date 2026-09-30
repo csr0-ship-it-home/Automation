@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Timing Signals</title>
+<meta name="description" content="Statistics-driven alerts for when sectors, size and style segments look attractive to buy.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232a78d6'/><path d='M6 22l6-7 5 4 9-11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1>Market Timing Signals</h1>
+      <p class="sub" id="updated">Loading…</p>
+    </div>
+    <div class="top-actions">
+      <button id="notifyBtn" class="btn" type="button">Enable browser alerts</button>
+      <button id="themeBtn" class="btn icon" type="button" aria-label="Toggle dark mode">◐</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="demoBanner" class="banner" hidden>
+    <strong>Demo data.</strong> These numbers are synthetic so you can see the layout. Real data appears after the
+    GitHub Action runs for the first time (see README → Setup).
+  </div>
+  <div id="errBanner" class="banner warn" hidden></div>
+
+  <section class="summary" id="summary"></section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Alerts</h2>
+      <div class="seg" id="alertFilter" role="tablist">
+        <button data-f="all" class="on">All</button>
+        <button data-f="opportunity">Opportunities</button>
+        <button data-f="warning">Warnings</button>
+        <button data-f="info">Info</button>
+      </div>
+    </div>
+    <p class="hint">Each asset signal is back-tested on that asset's own ~10-year history: what happened over the next 3 months
+      the previous times this setup appeared, compared with a normal 3-month period.</p>
+    <div id="alerts" class="alerts"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="card-head"><h2>Style box</h2><span class="hint">Composite score, 0–100</span></div>
+      <div id="stylebox"></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Relative value</h2><span class="hint">Where each ratio sits in its ~10-year range</span></div>
+      <div id="pairs"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Rankings</h2>
+      <div class="seg" id="groupTabs"></div>
+    </div>
+    <p class="hint">Click any row for the full breakdown. Column headers sort.</p>
+    <div class="table-wrap"><table id="rankTable"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Macro dashboard</h2><span class="hint" id="regimeHint"></span></div>
+    <div id="factors" class="factors"></div>
+    <div id="gauges" class="gauges"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Recent alert history</h2></div>
+    <div id="log" class="log"></div>
+  </section>
+
+  <section class="card method">
+    <h2>How the score works</h2>
+    <p>Every asset gets a 0–100 composite score from five parts, each scaled from −1 to +1. 50 is neutral.</p>
+    <ul>
+      <li><b>Trend (25%)</b>: price above its 200-day average, 50-day above 200-day, and a rising 200-day average.</li>
+      <li><b>Momentum (20%)</b>: 12-month return (excluding the last month) and 3-month return, ranked against every other asset tracked.</li>
+      <li><b>Value (20%)</b>: how cheap the asset is compared with its own history: its stretch from the 200-day average as a percentile, its price relative to the S&amp;P 500 as a 10-year percentile, and its distance from its all-time high.</li>
+      <li><b>Timing (15%)</b>: whether now is a good entry point. An oversold RSI inside an uptrend scores well; an overbought RSI scores badly.</li>
+      <li><b>Macro (20%)</b>: how the asset has tended to respond to current conditions such as the yield curve, credit spreads, recession risk, inflation, the dollar, real yields, fear and oil.</li>
+    </ul>
+    <p>Ratings: <b>Strong Buy</b> ≥70 · <b>Buy</b> ≥60 · <b>Hold</b> ≥45 · <b>Caution</b> ≥35 · <b>Avoid</b> &lt;35.
+      Alerts fire when a rating changes, a timing setup appears (oversold uptrend, capitulation, golden or death cross, relative-value turn, breakout, overextension) or a macro threshold is crossed (VIX, credit spreads, yield curve, Sahm rule, Fed cuts, sentiment).
+      A bullish setup that has historically <em>underperformed</em> for that asset is downgraded to Info.</p>
+    <p class="disclaimer">Educational tool, not investment advice. Back-tests use a single ~10-year sample and past patterns may not repeat.
+      Data: Yahoo Finance / Stooq (prices, dividend-adjusted where available) and FRED (macro). Updated automatically after the US market close.</p>
+  </section>
+</main>
+
+<div id="drawer" class="drawer" hidden>
+  <div class="drawer-bg" data-close></div>
+  <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <button class="btn icon close" data-close aria-label="Close">✕</button>
+    <div id="drawerBody"></div>
+  </aside>
+</div>
+<div id="tip" class="tip" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
