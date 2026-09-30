@@ -6,7 +6,7 @@ bond / real-asset class**. It pushes an alert to your phone or inbox when someth
 
 It runs for free on GitHub: a scheduled GitHub Action pulls the data every weekday after the US close,
 scores everything, writes JSON into `docs/data/`, and GitHub Pages serves the dashboard from `docs/`.
-No servers, API keys or paid data.
+No servers and no paid data. The only key you need is a free FRED key for the economic data.
 
 > Educational tool, not investment advice. The back-tests use a single ~10-year sample, and past
 > patterns may not repeat.
@@ -79,7 +79,9 @@ return and the win rate after past occurrences, next to a normal 3-month period.
    The site will be at `https://<your-username>.github.io/<repo>/`.
 3. **Run it once:** Actions → "Update market signals" → Run workflow. This replaces the demo data with live data. After that it runs
    every weekday at 11:00am Central (midday, using live intraday prices) and again after the close (5:15pm Central in summer, 4:15pm in winter).
-4. **Phone alerts (easiest):** install the free [ntfy](https://ntfy.sh) app, subscribe to a hard-to-guess topic name
+4. **Economic data key (needed):** FRED blocks anonymous downloads from GitHub's servers. Create a free key at
+   https://fredaccount.stlouisfed.org/apikeys and add it as a repository secret named `FRED_API_KEY`.
+5. **Phone alerts (easiest):** install the free [ntfy](https://ntfy.sh) app, subscribe to a hard-to-guess topic name
    (for example `market-signals-8f3k2`), then add a repository secret `NTFY_TOPIC` with that name
    (Settings → Secrets and variables → Actions).
 
@@ -87,6 +89,7 @@ Optional channels, all set as repository secrets:
 
 | Secret | Purpose |
 |---|---|
+| `TIINGO_API_KEY` | Backup price source if Yahoo Finance rate-limits the run (free key at tiingo.com) |
 | `ANTHROPIC_API_KEY` | Claude-written market brief and top-5 writeups (from console.anthropic.com) |
 | `WEBHOOK_URL` | Slack or Discord incoming webhook |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `ALERT_EMAIL_TO` | Email, for example Gmail with an app password (`smtp.gmail.com`, `587`) |
@@ -110,7 +113,7 @@ python -m http.server -d docs 8000      # open http://localhost:8000
 
 ```
 engine/universe.py      what is tracked + macro sensitivities (edit to add tickers)
-engine/data_sources.py  Yahoo Finance (Stooq fallback) prices, FRED macro, all keyless
+engine/data_sources.py  prices (yfinance, Tiingo/Yahoo/Stooq fallbacks) and FRED macro data
 engine/indicators.py    SMA, RSI, drawdown, percentiles, forward-return back-tests
 engine/macro.py         macro gauges, factor scores, risk regime, macro alerts
 engine/scoring.py       per-asset metrics, timing signals, composite score

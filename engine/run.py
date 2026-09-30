@@ -141,14 +141,18 @@ def main(argv=None):
     if args.demo:
         prices, macro_raw, errors = demo.prices(symbols), demo.macro(MACRO_SERIES), {}
     else:
-        prices, perr = _fetch_all(data_sources.fetch_prices, symbols)
-        macro_raw, merr = _fetch_all(data_sources.fetch_fred, [m["id"] for m in MACRO_SERIES])
+        prices, perr = data_sources.fetch_all_prices(symbols)
+        macro_raw, merr = _fetch_all(data_sources.fetch_fred, [m["id"] for m in MACRO_SERIES], workers=4)
         errors = {**perr, **merr}
         for k, v in errors.items():
             print(f"WARN fetch {k}: {v}", file=sys.stderr)
+        print(f"prices: {len(prices)}/{len(symbols)} symbols, macro: {len(macro_raw)}/{len(MACRO_SERIES)} series")
         if BENCHMARK not in prices or len(prices) < len(symbols) // 2:
             print("ERROR: too many price fetches failed; keeping previous data", file=sys.stderr)
             return 1
+        if not macro_raw:
+            print("WARN: no macro data fetched (set a FRED_API_KEY secret); scoring without the macro component",
+                  file=sys.stderr)
 
     latest = build(prices, macro_raw, prev, now, is_demo=args.demo, errors=errors)
     try:

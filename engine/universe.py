@@ -88,7 +88,7 @@ PAIRS = [
     ("XLY", "XLP", "Discretionary vs Staples (risk appetite)"),
 ]
 
-# FRED series pulled via the keyless fredgraph CSV endpoint.
+# FRED series (official API with FRED_API_KEY, keyless graph CSV as a fallback).
 # transform: "level" (latest value) or "yoy" (% change vs. 12 months earlier)
 MACRO_SERIES = [
     {"id": "VIXCLS", "name": "VIX (equity volatility)", "unit": "", "transform": "level", "freq": "d"},
