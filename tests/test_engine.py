@@ -99,6 +99,61 @@ class SourceTests(unittest.TestCase):
             op.assert_not_called()
 
 
+class PublicMacroTests(unittest.TestCase):
+    def test_treasury(self):
+        from engine.macro_sources import parse_treasury_csv
+        txt = ('"Date","1 Mo","3 Mo","2 Yr","10 Yr"\n'
+               '09/29/2026,4.1,4.00,3.50,4.20\n09/28/2026,4.1,4.02,N/A,4.25\n')
+        out = parse_treasury_csv(txt, ["3 Mo", "2 Yr", "10 Yr"])
+        self.assertEqual(out["10 Yr"], [("2026-09-28", 4.25), ("2026-09-29", 4.2)])
+        self.assertEqual(out["2 Yr"], [("2026-09-29", 3.5)])
+
+    def test_treasury_derived(self):
+        from unittest import mock
+        from engine import macro_sources
+        nominal = '"Date","3 Mo","2 Yr","10 Yr"\n09/29/2026,4.00,3.50,4.20\n'
+        real = '"Date","5 YR","10 YR"\n09/29/2026,1.5,1.90\n'
+        with mock.patch.object(macro_sources, "_get", side_effect=lambda url, **k: real if "real" in url else nominal):
+            out = macro_sources.treasury_series([2026])
+        self.assertEqual(out["T10Y2Y"], [("2026-09-29", 0.7)])
+        self.assertEqual(out["T10Y3M"], [("2026-09-29", 0.2)])
+        self.assertEqual(out["T10YIE"], [("2026-09-29", 2.3)])
+        self.assertEqual(out["DFII10"], [("2026-09-29", 1.9)])
+
+    def test_nyfed(self):
+        from engine.macro_sources import parse_nyfed
+        txt = json.dumps({"refRates": [{"effectiveDate": "2026-09-29", "type": "EFFR", "percentRate": 4.33},
+                                       {"effectiveDate": "2026-09-26", "type": "EFFR", "percentRate": 4.33}]})
+        self.assertEqual(parse_nyfed(txt)[0], ("2026-09-26", 4.33))
+
+    def test_bls(self):
+        from engine.macro_sources import parse_bls
+        txt = json.dumps({"status": "REQUEST_SUCCEEDED", "Results": {"series": [
+            {"seriesID": "LNS14000000", "data": [{"year": "2026", "period": "M08", "value": "4.3"},
+                                                 {"year": "2026", "period": "M07", "value": "4.2"}]}]}})
+        self.assertEqual(parse_bls(txt)["UNRATE"], [("2026-07-01", 4.2), ("2026-08-01", 4.3)])
+        with self.assertRaises(RuntimeError):
+            parse_bls(json.dumps({"status": "REQUEST_NOT_PROCESSED", "message": ["limit"]}))
+
+    def test_umich_and_nfci(self):
+        from engine.macro_sources import parse_nfci, parse_umich
+        self.assertEqual(parse_umich("Month,YYYY,ICS_ALL\nAugust,2026,58.2\n"), [("2026-08-01", 58.2)])
+        self.assertEqual(parse_nfci("Friday_of_Week,NFCI,ANFCI\n09/26/2026,-0.52,-0.4\n"), [("2026-09-26", -0.52)])
+
+    def test_sahm(self):
+        from engine.macro_sources import sahm_from_unrate
+        flat = [(f"{2024 + m // 12}-{m % 12 + 1:02d}-01", 4.0) for m in range(24)]
+        self.assertTrue(all(abs(v) < 1e-9 for _, v in sahm_from_unrate(flat)))
+        rising = flat + [(f"2026-{m:02d}-01", 4.0 + 0.2 * m) for m in range(1, 7)]
+        self.assertGreater(sahm_from_unrate(rising)[-1][1], 0.5)
+
+    def test_credit_proxy(self):
+        from engine.macro_sources import credit_proxy
+        hyg = [("d1", 100.0), ("d2", 95.0)]
+        ief = [("d1", 100.0), ("d2", 100.0)]
+        self.assertEqual(credit_proxy({"HYG": hyg, "IEF": ief})[-1], ("d2", -5.0))
+
+
 class PipelineTests(unittest.TestCase):
     def test_demo_pipeline(self):
         from datetime import datetime, timezone

@@ -6,7 +6,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from . import ai, data_sources, demo, news, notify, writeups
+from . import ai, data_sources, demo, macro_sources, news, notify, writeups
 from .indicators import pct_change, percentile_rank
 from .macro import build_macro
 from .scoring import analyze_asset, finalize_scores
@@ -141,8 +141,18 @@ def main(argv=None):
     if args.demo:
         prices, macro_raw, errors = demo.prices(symbols), demo.macro(MACRO_SERIES), {}
     else:
-        prices, perr = data_sources.fetch_all_prices(symbols)
-        macro_raw, merr = _fetch_all(data_sources.fetch_fred, [m["id"] for m in MACRO_SERIES], workers=4)
+        tickers = macro_sources.MARKET_TICKERS
+        prices, perr = data_sources.fetch_all_prices(symbols + list(tickers.values()))
+        macro_raw = {fid: prices.pop(t) for fid, t in tickers.items() if t in prices}
+        perr = {k: v for k, v in perr.items() if k not in tickers.values()}
+        public, merr = macro_sources.fetch_public_macro()
+        macro_raw.update(public)
+        macro_raw["CREDIT_PROXY"] = macro_sources.credit_proxy(prices)
+        fred_ids = [m["id"] for m in MACRO_SERIES if m["id"] not in macro_raw and m["id"] not in ("CORECPI", "CREDIT_PROXY")]
+        fred, ferr = _fetch_all(data_sources.fetch_fred, fred_ids, workers=4)
+        macro_raw.update(fred)
+        if ferr:
+            print(f"FRED unavailable for {len(ferr)} optional series (shown only when FRED is reachable): {', '.join(ferr)}")
         errors = {**perr, **merr}
         for k, v in errors.items():
             print(f"WARN fetch {k}: {v}", file=sys.stderr)

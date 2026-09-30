@@ -17,19 +17,20 @@ FEEDS = [
     ("Google News", "https://news.google.com/rss/search?q=stock+market+OR+%22federal+reserve%22+OR+economy+when:2d&hl=en-US&gl=US&ceid=US:en"),
 ]
 
-SYMBOL_FEED = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US"
+# Per-fund headlines (Yahoo's per-symbol feed rate-limits cloud servers, so use Google News search)
+SYMBOL_FEED = "https://news.google.com/rss/search?q=%22{symbol}%22+ETF+when:7d&hl=en-US&gl=US&ceid=US:en"
 
 # theme -> (regex, related fund symbols, related macro gauge ids)
 THEMES = {
     "Fed & interest rates": (r"\bfed\b|fomc|powell|rate cuts?|rate hikes?|interest rates?|treasur(y|ies)|bond yields?|10-year",
                              ["TLT", "IEF", "ITB", "XLRE", "IWM", "XLU"], ["DFF", "DGS2", "DGS10"]),
-    "Inflation": (r"inflation|\bcpi\b|\bpce\b|consumer prices|price pressures", ["TIP", "XLE", "DBC", "XLB"], ["CPIAUCSL", "T10YIE"]),
+    "Inflation": (r"inflation|\bcpi\b|\bpce\b|consumer prices|price pressures", ["TIP", "XLE", "DBC", "XLB"], ["CPIAUCSL", "CORECPI", "T10YIE"]),
     "Jobs & economy": (r"\bjobs?\b|payrolls?|unemployment|jobless|\bgdp\b|recession|retail sales|consumer spending|economy|economic",
                        ["XLY", "XLP", "XLI", "IWM"], ["UNRATE", "ICSA", "SAHMREALTIME"]),
     "Energy & oil": (r"\boil\b|crude|opec|gasoline|natural gas|energy stocks", ["XLE", "DBC"], ["DCOILWTICO"]),
     "Tech & AI": (r"\bA\.?I\.?\b|artificial intelligence|nvidia|chips?\b|semiconductor|apple|microsoft|alphabet|google|meta\b|amazon|tech stocks",
                   ["XLK", "SMH", "QQQ", "IVW", "XLC"], []),
-    "Banks & credit": (r"\bbanks?\b|lenders?|credit|defaults?|\bloans?\b|private credit", ["XLF", "KRE", "HYG", "LQD"], ["BAMLH0A0HYM2"]),
+    "Banks & credit": (r"\bbanks?\b|lenders?|credit|defaults?|\bloans?\b|private credit", ["XLF", "KRE", "HYG", "LQD"], ["BAMLH0A0HYM2", "CREDIT_PROXY"]),
     "Housing": (r"housing|mortgages?|home sales|homebuilders?|home prices", ["ITB", "XLRE", "VNQ"], ["PERMIT"]),
     "China & trade": (r"china|chinese|tariffs?|trade war|trade deal|exports?|imports?", ["MCHI", "EEM", "XLI"], []),
     "Earnings": (r"earnings|quarterly results|profit|revenue|guidance|beats estimates|misses estimates", ["SPY", "QQQ"], []),
@@ -113,7 +114,7 @@ def fetch_headlines(now, symbols=()):
     """General market headlines plus per-symbol headlines for `symbols`."""
     with ThreadPoolExecutor(max_workers=6) as ex:
         general = [i for batch in ex.map(_fetch, FEEDS) for i in batch]
-        per_symbol = dict(zip(symbols, ex.map(lambda s: _fetch(("Yahoo Finance", SYMBOL_FEED.format(symbol=s))), symbols)))
+        per_symbol = dict(zip(symbols, ex.map(lambda s: _fetch(("Google News", SYMBOL_FEED.format(symbol=s))), symbols)))
     return tag_and_rank(general, now), {s: tag_and_rank(v, now, max_age_days=10, limit=6) for s, v in per_symbol.items()}
 
 

@@ -1,7 +1,8 @@
 """Market data sources.
 
 Prices: yfinance bulk download (primary, keyless) -> Tiingo (if TIINGO_API_KEY) -> Yahoo chart API -> Stooq.
-Macro:  FRED API (if FRED_API_KEY, recommended) -> FRED graph CSV (keyless, often blocked from cloud IPs).
+Macro:  see macro_sources.py (Treasury, NY Fed, BLS, UMich, Chicago Fed); FRED only fills the remaining
+        series (official API if FRED_API_KEY is set, otherwise the keyless graph CSV).
 A host that keeps failing is skipped for the rest of the run so a blocked source fails fast.
 """
 import csv
@@ -29,6 +30,11 @@ def _redact(url):
 
 
 def _get(url, retries=3, timeout=30, headers=None):
+    return _request(url, retries=retries, timeout=timeout, headers=headers)
+
+
+def _request(url, data=None, retries=3, timeout=30, headers=None):
+    """GET (or POST when `data` is given) with retries and a per-host circuit breaker."""
     host = urllib.parse.urlsplit(url).netloc
     last = None
     for attempt in range(retries):
@@ -36,7 +42,7 @@ def _get(url, retries=3, timeout=30, headers=None):
             if _host_failures.get(host, 0) >= HOST_FAILURE_LIMIT:
                 raise RuntimeError(f"GET {_redact(url)} skipped: {host} is blocking or down this run ({last or 'repeated failures'})")
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*", **(headers or {})})
+            req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, "Accept": "*/*", **(headers or {})})
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 with _host_lock:
                     _host_failures[host] = 0
@@ -197,4 +203,4 @@ def fetch_fred(series_id, start="2010-01-01"):
                f"?series_id={series_id}&api_key={key}&file_type=json&observation_start={start}")
         return parse_fred_api(_get(url, retries=3, timeout=30))
     return parse_fred_csv(_get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}&cosd={start}",
-                               retries=2, timeout=45, headers={"User-Agent": "curl/8.5.0"}))
+                               retries=2, timeout=20, headers={"User-Agent": "curl/8.5.0"}))

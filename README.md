@@ -6,7 +6,7 @@ bond / real-asset class**. It pushes an alert to your phone or inbox when someth
 
 It runs for free on GitHub: a scheduled GitHub Action pulls the data every weekday after the US close,
 scores everything, writes JSON into `docs/data/`, and GitHub Pages serves the dashboard from `docs/`.
-No servers and no paid data. The only key you need is a free FRED key for the economic data.
+No servers, no API keys and no paid data.
 
 > Educational tool, not investment advice. The back-tests use a single ~10-year sample, and past
 > patterns may not repeat.
@@ -28,7 +28,7 @@ and 2 years of price and moving-average charts.
 **Relative-value pairs:** value vs growth (large and small), small vs large, mid vs large, equal vs cap weight, international vs US,
 EM vs US, and discretionary vs staples.
 
-**24 macro series from FRED:** VIX, the 10y-2y and 10y-3m yield curves, high-yield credit spreads, the Fed funds rate, 2y and 10y yields,
+**Economic data, straight from the agencies (no keys):** U.S. Treasury yield curves and real yields, the New York Fed's fed funds rate, BLS CPI, core CPI and unemployment (plus the Sahm rule computed from it), University of Michigan sentiment, Chicago Fed financial conditions, and VIX, oil and the dollar from market data. FRED fills in the rest when reachable: VIX, the 10y-2y and 10y-3m yield curves, high-yield credit spreads, the Fed funds rate, 2y and 10y yields,
 the 10y real yield, breakevens, CPI and core PCE, unemployment, the Sahm rule, jobless claims, recession probability,
 consumer sentiment, the Chicago Fed financial conditions index, the dollar, oil, M2, industrial production, housing permits,
 and the Buffett indicator (market cap / GDP).
@@ -79,9 +79,7 @@ return and the win rate after past occurrences, next to a normal 3-month period.
    The site will be at `https://<your-username>.github.io/<repo>/`.
 3. **Run it once:** Actions → "Update market signals" → Run workflow. This replaces the demo data with live data. After that it runs
    every weekday at 11:00am Central (midday, using live intraday prices) and again after the close (5:15pm Central in summer, 4:15pm in winter).
-4. **Economic data key (needed):** FRED blocks anonymous downloads from GitHub's servers. Create a free key at
-   https://fredaccount.stlouisfed.org/apikeys and add it as a repository secret named `FRED_API_KEY`.
-5. **Phone alerts (easiest):** install the free [ntfy](https://ntfy.sh) app, subscribe to a hard-to-guess topic name
+4. **Phone alerts (easiest):** install the free [ntfy](https://ntfy.sh) app, subscribe to a hard-to-guess topic name
    (for example `market-signals-8f3k2`), then add a repository secret `NTFY_TOPIC` with that name
    (Settings → Secrets and variables → Actions).
 
@@ -89,6 +87,7 @@ Optional channels, all set as repository secrets:
 
 | Secret | Purpose |
 |---|---|
+| `FRED_API_KEY` | Optional: more reliable access to the FRED-only series (claims, M2, Buffett indicator…) |
 | `TIINGO_API_KEY` | Backup price source if Yahoo Finance rate-limits the run (free key at tiingo.com) |
 | `ANTHROPIC_API_KEY` | Claude-written market brief and top-5 writeups (from console.anthropic.com) |
 | `WEBHOOK_URL` | Slack or Discord incoming webhook |
